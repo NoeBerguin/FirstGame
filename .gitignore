@@ -1,5 +1,13 @@
 # Visual Studio 2015 user specific files
 .vs/
+/.vscode
+/Content
+/DerivedDataCache
+/Intermediate
+/Saved
+/Plugins/MultiplayerSessions/Content
+/Plugins/MultiplayerSessions/Intermediate
+
 
 # Compiled Object files
 *.slo
