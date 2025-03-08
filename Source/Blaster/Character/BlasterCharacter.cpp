@@ -21,6 +21,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Blaster/PlayerState/BlasterPlayerState.h"
 #include "Blaster/Weapon/WeaponTypes.h"
+#include "Blaster/Door/Door.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -174,9 +175,29 @@ void ABlasterCharacter::PlayReloadMontage()
 		FName SectionName;
 		switch (Combat->EquippedWeapon->GetWeaponType())
 		{
-		case EWeaponType::EWT_AssaultRifle:
-			SectionName = FName("Rifle");
-			break;
+			case EWeaponType::EWT_AssaultRifle:
+				SectionName = FName("Rifle");
+				break;
+
+			case EWeaponType::EWT_RocketLauncher:
+				SectionName = FName("Rifle");
+				break;
+
+			case EWeaponType::EWT_Pistol:
+				SectionName = FName("Rifle");
+				break;
+
+			case EWeaponType::EWT_SubmachineGun:
+				SectionName = FName("Rifle");
+				break;
+
+			case EWeaponType::EWT_Shotgun:
+				SectionName = FName("Rifle");
+				break;
+
+			case EWeaponType::EWT_SniperRifle:
+				SectionName = FName("Rifle");
+				break;
 		}
 		AnimInstance->Montage_JumpToSection(SectionName);
 	}
@@ -243,6 +264,12 @@ void ABlasterCharacter::EquipButtonPressed()
 		else{
 			ServerEquipButtonPressed();
 		}
+	}
+
+	if(OverlappingDoor)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OPEN DOOR"));
+		OverlappingDoor->Open(this);
 	}
 }
 
@@ -569,6 +596,11 @@ void ABlasterCharacter::MulticastElim_Implementation()
 			ElimBotSound,
 			GetActorLocation()
 		);
+	}
+	bool bHideSniperScope = IsLocallyControlled() && Combat->bAiming && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SniperRifle;
+	if(bHideSniperScope)
+	{
+		ShowSniperScopeWidget(false);
 	}
 }
 

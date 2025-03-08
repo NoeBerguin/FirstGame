@@ -36,6 +36,9 @@ public:
 	UPROPERTY(Replicated)
 	bool bDisableGameplay = false; 
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void ShowSniperScopeWidget(bool bShowScope);
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -177,6 +180,9 @@ private:
 	UPROPERTY()
 	class ABlasterPlayerState *  BlasterPlayerState; 
 
+	UPROPERTY()
+	class ADoor * OverlappingDoor;
+
 public:
 
 	void SetOverlappingWeapon(AWeapon * Weapon);
@@ -195,4 +201,5 @@ public:
 	ECombatState GetCombatState() const;
 	FORCEINLINE UCombatComponent * GetCombat() const { return Combat;}
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay;}
+	FORCEINLINE void SetOverlappingDoor(ADoor* Door) {OverlappingDoor = Door;}
 };
