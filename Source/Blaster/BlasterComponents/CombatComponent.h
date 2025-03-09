@@ -148,7 +148,10 @@ protected:
 	int32 StartingShotgunAmmo = 8;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingSniperAmmo = 5;
+	int32 StartingSniperAmmo = 5; 
+
+	UPROPERTY(EditAnywhere)
+	int32 StartingGrenadeLauncherAmmo = 5;
 
 	void InitializeCarriedAmmo();
 
