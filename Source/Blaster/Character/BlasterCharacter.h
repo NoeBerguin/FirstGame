@@ -22,9 +22,16 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const override; 
 	virtual void PostInitializeComponents() override;
+
+	/** 
+ 	* Play montages
+ 	*/
 	void PlayFireMontage(bool bAiming);
 	void PlayReloadMontage();
 	void PlayElimMontage();
+	void PlayThrowGrenadeMontage();
+	void PlaySwapMontage();
+
 	virtual void OnRep_ReplicatedMovement() override;
 
 	void Elim();
@@ -38,6 +45,74 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowSniperScopeWidget(bool bShowScope);
+	
+	void UpdateHUDHealth();
+	void UpdateHUDShield();
+	void UpdateHUDAmmo();
+
+	void SpawnDefaultWeapon();
+
+	UPROPERTY()
+	TMap<FName, class UBoxComponent*> HitCollisionBoxes;
+
+	bool bFinishedSwapping = false;
+
+	/*
+	* HitBox used for server-side rewind
+	*/
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* head;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* pelvis;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* spine_02;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* spine_03;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* upperarm_l;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* upperarm_r;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* lowerarm_l;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* lowerarm_r;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* hand_l;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* hand_r;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* backpack;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* blanket;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* thigh_l;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* thigh_r;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* calf_l;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* calf_r;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* foot_l;
+
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* foot_r;
 
 protected:
 	// Called when the game starts or when spawned
@@ -58,13 +133,17 @@ protected:
 	void FireButtonPressed();
 	void FireButtonReleased();
 	void PlayHitReactMontage();
+	void GrenadeButtonPressed();
+	void DropOrDestroyWeapon(AWeapon* Weapon);
+	void DropOrDestroyWeapons();
 
 	UFUNCTION()
 	void ReceiveDamage(AActor * DamagedActor, float Damage, const UDamageType * DamageType, class AController * InstigatorController, AActor * DamageCauser);
-	void UpdateHUDHealth();
+	
 	// poll for any relevant classes and initialize ou HUD 
 	void PollInit();
 	void RotateInPlace(float DeltaTime);
+
 
 private: 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -82,8 +161,18 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon * LastWeapon);
 
+	/*
+	* Blaster components
+	*/
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent * Combat;
+
+	UPROPERTY(VisibleAnywhere)
+	class UBuffComponent * Buff;
+
+	UPROPERTY(VisibleAnywhere)
+ 	class ULagCompensationComponent* LagCompensation;
 
 	UFUNCTION(Server, Reliable)
 	void ServerEquipButtonPressed();
@@ -110,6 +199,12 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	class UAnimMontage * ReloadMontage;
 
+	UPROPERTY(EditAnywhere, Category = Combat)
+	class UAnimMontage * ThrowGrenadeMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+ 	UAnimMontage* SwapMontage;
+
 	void HideCameraIfCharacterClose();
 
 	UPROPERTY(EditAnywhere)
@@ -132,7 +227,18 @@ private:
 	float Health = 100.f; 
 
 	UFUNCTION()
-	void OnRep_Health();
+	void OnRep_Health(float LastHealth);
+
+	// player shield
+
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	float MaxShield = 100.f; 
+
+	UPROPERTY(ReplicatedUsing = OnRep_Shield, EditAnywhere, Category = "Player Stats")
+	float Shield = 0.f; 
+
+	UFUNCTION()
+	void OnRep_Shield(float LastShield);
 
 	UPROPERTY()
 	class ABlasterPlayerController * BlasterPlayerController; 
@@ -183,6 +289,19 @@ private:
 	UPROPERTY()
 	class ADoor * OverlappingDoor;
 
+	/*
+	* GRENADE
+	 */
+
+	UPROPERTY(VisibleAnywhere)
+	UStaticMeshComponent * AttachedGrenade;
+
+	/*
+	* DEFAULT WEAPON
+	*/
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AWeapon> DefaultWeaponClass; 
+
 public:
 
 	void SetOverlappingWeapon(AWeapon * Weapon);
@@ -197,9 +316,18 @@ public:
 	FORCEINLINE bool ShouldRotateRootBone() const {return  bRotateRootBone;}
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const {return Health; }
+	FORCEINLINE void SetHealth(float Amount) {Health = Amount; }
 	FORCEINLINE float GetMaxHealth() const {return MaxHealth; }
+	FORCEINLINE float GetShield() const {return Shield; }
+	FORCEINLINE void SetShield(float Amount) {Shield = Amount; }
+	FORCEINLINE float GetMaxShield() const {return MaxShield; }
 	ECombatState GetCombatState() const;
 	FORCEINLINE UCombatComponent * GetCombat() const { return Combat;}
+	FORCEINLINE UBuffComponent * GetBuff() const { return Buff;}
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay;}
 	FORCEINLINE void SetOverlappingDoor(ADoor* Door) {OverlappingDoor = Door;}
+	FORCEINLINE UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
+	FORCEINLINE UStaticMeshComponent* GetAttachedGrenade() const {return AttachedGrenade; }
+	bool IsLocallyReloading();
+	FORCEINLINE ULagCompensationComponent* GetLagCompensation() const { return LagCompensation; }
 };

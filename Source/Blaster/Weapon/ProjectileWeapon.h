@@ -20,5 +20,8 @@ class BLASTER_API AProjectileWeapon : public AWeapon
 
 		UPROPERTY(EditAnywhere)
 		TSubclassOf<class AProjectile> ProjectileClass;
+
+		UPROPERTY(EditAnywhere)
+		TSubclassOf<AProjectile> ServerSideRewindProjectileClass;
 	
 };
