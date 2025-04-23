@@ -19,6 +19,10 @@ class BLASTER_API ABlasterPlayerController : public APlayerController
 public:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const override; 
+	void HideTeamScores();
+ 	void InitTeamScores();
+ 	void SetHUDRedTeamScore(int32 RedScore);
+ 	void SetHUDBlueTeamScore(int32 BlueScore);
 	void SetHUDHealth(float Health, float MaxHealth);
 	void SetHUDShield(float Shield, float MaxShield);
 	void SetHUDScore(float Score);
@@ -34,15 +38,21 @@ public:
 	virtual float GetServerTime(); // Synced with server world clock
 	virtual void ReceivedPlayer() override; // Sync with server clock as soon as possible
 
-	void OnMatchStateSet(FName State); 
-	void HandleMatchHasStarted();
+	void OnMatchStateSet(FName State, bool bTeamsMatch = false);
+ 	void HandleMatchHasStarted(bool bTeamsMatch = false);
 	void HandleCooldown();
 
 	float SingleTripTime = 0.f;
 
 	FHighPingDelegate HighPingDelegate;
 
+	void BroadcastElim(APlayerState* Attacker, APlayerState* Victim);
+
+	UPROPERTY(ReplicatedUsing = OnRep_ShowTeamScores)
+ 	bool bShowTeamScores = false;
+
 protected: 
+	virtual void SetupInputComponent() override;
 
 	virtual void BeginPlay() override; 
 	void SetHUDTime();
@@ -79,7 +89,30 @@ protected:
 	void StopHighPingWarning();
 	void CheckPing(float DeltaTime); 
 
+	void ShowReturnToMainMenu();
+
+	UFUNCTION(Client, Reliable)
+ 	void ClientElimAnnouncement(APlayerState* Attacker, APlayerState* Victim);
+ 
+ 	UFUNCTION()
+ 	void OnRep_ShowTeamScores();
+
+	FString GetInfoText(const TArray<class ABlasterPlayerState*>& Players);
+ 	FString GetTeamsInfoText(class ABlasterGameState* BlasterGameState);
+
 private: 
+
+	/** 
+ 	* Return to main menu
+ 	*/
+ 
+ 	UPROPERTY(EditAnywhere, Category = HUD)
+ 	TSubclassOf<class UUserWidget> ReturnToMainMenuWidget;
+ 
+ 	UPROPERTY()
+ 	class UReturnToMainMenu* ReturnToMainMenu;
+ 
+ 	bool bReturnToMainMenuOpen = false;
 
 	UPROPERTY()
 	class ABlasterHUD * BlasterHUD; 
@@ -109,6 +142,7 @@ private:
 	bool bInitializeGrenades = false; 
 	bool bInitializeCarriedAmmo = false; 
 	bool bInitializeWeaponAmmo = false; 
+	bool bInitializeTeamScore = false;
 
 	float HUDHealth;
 	float HUDMaxHealth;

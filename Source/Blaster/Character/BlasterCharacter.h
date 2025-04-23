@@ -8,7 +8,10 @@
 #include "Blaster/Interfaces/InteractWithCrosshairsInterface.h"
 #include "Components/TimeLineComponent.h"
 #include "Blaster/BlasterTypes/CombatState.h"
+#include "Blaster/BlasterTypes/Team.h"
 #include "BlasterCharacter.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLeftGame);
 
 UCLASS()
 class BLASTER_API ABlasterCharacter : public ACharacter, public IInteractWithCrosshairsInterface
@@ -34,11 +37,11 @@ public:
 
 	virtual void OnRep_ReplicatedMovement() override;
 
-	void Elim();
+	void Elim(bool bPlayerLeftGame);
 	virtual void Destroyed() override;
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastElim();
+	void MulticastElim(bool bPlayerLeftGame);
 
 	UPROPERTY(Replicated)
 	bool bDisableGameplay = false; 
@@ -56,6 +59,23 @@ public:
 	TMap<FName, class UBoxComponent*> HitCollisionBoxes;
 
 	bool bFinishedSwapping = false;
+
+	UFUNCTION(Server, Reliable)
+	void ServerLeaveGame();
+
+	FOnLeftGame OnLeftGame; 
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastGainedTheLead();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastLostTheLead();
+
+	void SetTeamColor(ETeam Team);
+
+	void SwitchCameraView(); 
+
+	bool bUseThirdPersonCamera = true; 
 
 	/*
 	* HitBox used for server-side rewind
@@ -137,6 +157,9 @@ protected:
 	void DropOrDestroyWeapon(AWeapon* Weapon);
 	void DropOrDestroyWeapons();
 
+	void SetSpawnPoint();
+	void OnPlayerStateInitialized();
+
 	UFUNCTION()
 	void ReceiveDamage(AActor * DamagedActor, float Damage, const UDamageType * DamageType, class AController * InstigatorController, AActor * DamageCauser);
 	
@@ -151,6 +174,15 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent * FollowCamera;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Camera")
+    FName CameraSocketName = "head";
+
+	UPROPERTY(EditAnywhere, Category = Camera)
+	class UCameraComponent * FirstPersonCamera;
+
+	UPROPERTY(EditAnywhere, Category = "Mesh")
+	USkeletalMeshComponent* FirstPersonMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"));
 	class UWidgetComponent * OverHeadWidget;
@@ -252,6 +284,8 @@ private:
 
 	void ElimTimerFinished();
 
+	bool bLeftGame = false; 
+
 	// Dissolve effect
 
 	UPROPERTY(VisibleAnywhere)
@@ -270,8 +304,28 @@ private:
 	UMaterialInstanceDynamic* DynamicDissolveMaterialInstance;
 
 	// Material instance set on the Blueprint, used with the dynamic material instance
-	UPROPERTY(EditAnywhere, Category = Elim)
+	UPROPERTY(VisibleAnywhere, Category = Elim)
 	UMaterialInstance* DissolveMaterialInstance; 
+
+	/** 
+ 	* Team colors
+ 	*/
+ 
+ 	UPROPERTY(EditAnywhere, Category = Elim)
+ 	UMaterialInstance* RedDissolveMatInst;
+ 
+ 	UPROPERTY(EditAnywhere, Category = Elim)
+ 	UMaterialInstance* RedMaterial;
+ 
+ 	UPROPERTY(EditAnywhere, Category = Elim)
+ 	UMaterialInstance* BlueDissolveMatInst;
+ 
+ 	UPROPERTY(EditAnywhere, Category = Elim)
+ 	UMaterialInstance* BlueMaterial;
+ 
+ 	UPROPERTY(EditAnywhere, Category = Elim)
+ 	UMaterialInstance* OriginalMaterial;
+
 
 	// Elim Bot
 	UPROPERTY(EditAnywhere, Category = Elim)
@@ -282,6 +336,12 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Elim)
 	class USoundCue* ElimBotSound;
+
+	UPROPERTY(EditAnywhere)
+	class UNiagaraSystem* CrownSystem;
+
+	UPROPERTY()
+	class UNiagaraComponent* CrownComponent;
 
 	UPROPERTY()
 	class ABlasterPlayerState *  BlasterPlayerState; 
@@ -301,6 +361,9 @@ private:
 	*/
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AWeapon> DefaultWeaponClass; 
+
+	UPROPERTY()
+	class ABlasterGameMode* BlasterGameMode;
 
 public:
 

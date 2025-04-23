@@ -29,10 +29,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(Server, Reliable, BlueprintCallable)
  	void FinishSwap();
  
- 	UFUNCTION(BlueprintCallable)
+ 	UFUNCTION(Server, Reliable, BlueprintCallable)
  	void FinishSwapAttachWeapons();
 
 	void TraceUnderCrosshairs(FHitResult& TraceHitResult);
@@ -89,13 +89,13 @@ private:
 	bool bFireButtonPressed;
 
 	UFUNCTION(server, Reliable)
-	void ServerFire(const FVector_NetQuantize & TraceHitTarget);
+	void ServerFire(const FVector_NetQuantize & TraceHitTarget, float FireDelay);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastFire(const FVector_NetQuantize & TraceHitTarget);
 
 	UFUNCTION(server, Reliable)
-	void ServerShotgunFire(const TArray<FVector_NetQuantize>& TraceHitTargets);
+	void ServerShotgunFire(const TArray<FVector_NetQuantize>& TraceHitTargets, float FireDelay);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastShotgunFire(const TArray<FVector_NetQuantize>& TraceHitTargets);

@@ -76,7 +76,7 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeP
 
 void AWeapon::OnPingTooHigh(bool bPingTooHigh)
  {
- 	bUseServerSideRewind = !bPingTooHigh;
+ 	// bUseServerSideRewind = !bPingTooHigh;
  }
 
 void AWeapon::OnRep_Owner()
@@ -119,7 +119,7 @@ void AWeapon::SpendRound()
 	{
 		ClientUpdateAmmo(Ammo);
 	}
-	else
+	else if (BlasterOwnerCharacter && BlasterOwnerCharacter->IsLocallyControlled())
 	{
 		Sequence++;
 	}

@@ -14,7 +14,7 @@ void ALobbyGameMode::PostLogin(APlayerController *NewPlayer)
         UWorld * World = GetWorld();
         if(World){
             // Log pour confirmer que la carte a été trouvée
-            FString MapPath = "/Game/Maps/BlasterMap?listen";
+            FString MapPath = "/Game/Maps/RockMont?listen";
             if (FPaths::FileExists(FPaths::ConvertRelativePathToFull(MapPath))) {
                 UE_LOG(LogTemp, Warning, TEXT("La carte %s a été trouvée."), *MapPath);
             } else {

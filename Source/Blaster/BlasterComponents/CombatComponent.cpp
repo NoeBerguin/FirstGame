@@ -221,9 +221,11 @@ void UCombatComponent::ShowAttachedGrenade(bool bShowGrenade)
 
 void UCombatComponent::LaunchGrenade()
 {
+	UE_LOG(LogTemp, Warning, TEXT("call LaunchGrenade()"));
 	ShowAttachedGrenade(false);
 	if(Character && Character->IsLocallyControlled())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Character && Character->IsLocallyControlled()"));
 		ServerLaunchGrenade(HitTarget);
 	}
 }
@@ -232,6 +234,7 @@ void UCombatComponent::ServerLaunchGrenade_Implementation(const FVector_NetQuant
 {
 	if (Character && GrenadeClass && Character->GetAttachedGrenade())
 		{
+			UE_LOG(LogTemp, Warning, TEXT(" Start to throw grenade"));
 			const FVector StartingLocation = Character->GetAttachedGrenade()->GetComponentLocation();
 			FVector ToTarget = Target - StartingLocation;
 			FActorSpawnParameters SpawnParams;
@@ -245,7 +248,8 @@ void UCombatComponent::ServerLaunchGrenade_Implementation(const FVector_NetQuant
 					StartingLocation,
 					ToTarget.Rotation(),
 					SpawnParams
-					);
+				);
+				UE_LOG(LogTemp, Warning, TEXT("Spawn grenade"));
 			}
 		}
 }
@@ -547,7 +551,7 @@ void UCombatComponent::OnRep_CombatState()
 		case ECombatState::ECS_SwappingWeapons:
 			if (Character && !Character->IsLocallyControlled())
 			{
-				Character->PlaySwapMontage();
+				//Character->PlaySwapMontage();
 			}
 			break;
 	}
@@ -638,7 +642,7 @@ void UCombatComponent::FireProjectileWeapon()
 	{
 		HitTarget = EquippedWeapon->bUseScatter ? EquippedWeapon->TraceEndWithScatter(HitTarget) : HitTarget; 
 		if(!Character->HasAuthority()) LocalFire(HitTarget);
-		ServerFire(HitTarget);
+		ServerFire(HitTarget, EquippedWeapon->FireDelay);
 	}
 }
 
@@ -648,7 +652,7 @@ void UCombatComponent::FireHitScanWeapon()
 	{
 		HitTarget = EquippedWeapon->bUseScatter ? EquippedWeapon->TraceEndWithScatter(HitTarget) : HitTarget; 
 		if(!Character->HasAuthority()) LocalFire(HitTarget);
-		ServerFire(HitTarget);
+		ServerFire(HitTarget, EquippedWeapon->FireDelay);
 	}
 }
 
@@ -660,7 +664,7 @@ void UCombatComponent::FireShotgun()
 		TArray<FVector_NetQuantize> HitTargets; 
 		Shotgun->ShotgunTraceEndWithScatter(HitTarget, HitTargets);
 		if(!Character->HasAuthority()) ShotgunLocalFire(HitTargets);
-		ServerShotgunFire(HitTargets);
+		ServerShotgunFire(HitTargets, EquippedWeapon->FireDelay);
 	}
 	
 }
@@ -684,7 +688,17 @@ void UCombatComponent::OnRep_CarriedAmmo()
 	}
 }
 
-void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize & TraceHitTarget)
+// bool UCombatComponent::ServerFire_Validate(const FVector_NetQuantize& TraceHitTarget, float FireDelay)
+//  {
+//  	// if (EquippedWeapon)
+//  	// {
+//  	// 	bool bNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->FireDelay, FireDelay, 0.001f);
+//  	// 	return bNearlyEqual;
+//  	// }
+//  	return false;
+//  }
+
+void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize & TraceHitTarget, float FireDelay)
 {
 	MulticastFire(TraceHitTarget);
 }
@@ -695,10 +709,20 @@ void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize & 
 	LocalFire(TraceHitTarget);
 }
 
-void UCombatComponent::ServerShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTargets)
+void UCombatComponent::ServerShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTargets, float FireDelay)
 {
 	MulticastShotgunFire(TraceHitTargets);
 }
+
+// bool UCombatComponent::ServerShotgunFire_Validate(const TArray<FVector_NetQuantize>& TraceHitTargets, float FireDelay)
+//  {
+//  	if (EquippedWeapon)
+//  	{
+//  		bool bNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->FireDelay, FireDelay, 0.001f);
+//  		return bNearlyEqual;
+//  	}
+//  	return true;
+//  }
 
 void UCombatComponent::MulticastShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTargets)
 {
@@ -722,6 +746,7 @@ void UCombatComponent::ShotgunLocalFire(const TArray<FVector_NetQuantize> & Trac
 	if(Shotgun == nullptr || Character == nullptr) return;
 	if(CombatState == ECombatState::ECS_Reloading || CombatState == ECombatState::ECS_Unoccupied) 
 	{
+		bLocallyReloading = false;
 		Character->PlayFireMontage(bAiming);
 		Shotgun->FireShotgun(TraceHitTargets);
 		CombatState = ECombatState::ECS_Unoccupied;
@@ -762,6 +787,11 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 			ECollisionChannel::ECC_Visibility
 		);
 
+		if (!TraceHitResult.bBlockingHit)
+		{
+			TraceHitResult.ImpactPoint = End; 
+		}
+
 		if(TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairsInterface>()){
 			HUDPackage.CrosshairsColor = FLinearColor::Red;
 		}
@@ -793,7 +823,7 @@ void UCombatComponent::SwapWeapons()
  	if (SecondaryWeapon) SecondaryWeapon->EnableCustomDepth(false);
 }
 
-void UCombatComponent::FinishSwap()
+void UCombatComponent::FinishSwap_Implementation()
  {
  	if (Character && Character->HasAuthority())
  	{
@@ -803,7 +833,7 @@ void UCombatComponent::FinishSwap()
  	if (SecondaryWeapon) SecondaryWeapon->EnableCustomDepth(true);
  }
  
-void UCombatComponent::FinishSwapAttachWeapons()
+void UCombatComponent::FinishSwapAttachWeapons_Implementation()
 {
  	AWeapon* TempWeapon = EquippedWeapon;
  	EquippedWeapon = SecondaryWeapon;
@@ -817,6 +847,8 @@ void UCombatComponent::FinishSwapAttachWeapons()
  
  	SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
  	AttachActorToBackpack(SecondaryWeapon);
+
+	int i = 0; 
 }
 
 bool UCombatComponent::ShouldSwapWeapons()
